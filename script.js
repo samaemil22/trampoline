@@ -187,7 +187,8 @@ function updateGamePrices() {
 async function startSession() {
     const childName = document.getElementById('child-name').value.trim();
     const fatherName = document.getElementById('father-name').value.trim();
-    const phone = normalizeNumbers(document.getElementById('customer-phone').value.trim());
+    const phoneInput = document.getElementById('customer-phone').value.trim();
+    const phone = normalizeNumbers(phoneInput);
     const gameType = document.getElementById('game-type').value;
     const durationSelect = document.getElementById('duration-price');
     const selectedOpt = durationSelect ? durationSelect.options[durationSelect.selectedIndex] : null;
@@ -196,9 +197,57 @@ async function startSession() {
 
     const nameRegex = /^[\u0600-\u06FFa-zA-Z\s]+$/;
 
-    if (!childName || !nameRegex.test(childName)) { alert("⚠️ يرجى إدخال اسم الطفل بشكل صحيح!"); return; }
-    if (!fatherName || !nameRegex.test(fatherName)) { alert("⚠️ يرجى إدخال اسم الأب بشكل صحيح!"); return; }
-    if (!gameType || !selectedOpt || !selectedOpt.value) { alert("⚠️ اختر نوع اللعبة والمدة!"); return; }
+    // Validation: Child Name
+    if (!childName) { 
+        alert("⚠️ يرجى إدخال اسم الطفل!"); 
+        return; 
+    }
+    if (!nameRegex.test(childName)) {
+        alert("⚠️ اسم الطفل يجب أن يحتوي على حروف فقط بدون أرقام أو رموز!");
+        return;
+    }
+
+    // Validation: Father Name
+    if (!fatherName) { 
+        alert("⚠️ يرجى إدخال اسم الأب!"); 
+        return; 
+    }
+    if (!nameRegex.test(fatherName)) {
+        alert("⚠️ اسم الأب يجب أن يحتوي على حروف فقط بدون أرقام أو رموز!");
+        return;
+    }
+
+    // VALIDATION: Phone Number - Must be exactly 11 digits
+    if (!phone) { 
+        alert("⚠️ يرجى إدخال رقم التليفون!"); 
+        return; 
+    }
+    if (phone.length < 11) {
+        alert("⚠️ رقم التليفون يجب أن يكون مكوناً من 11 رقماً بالضبط!\nالرقم الحالي: " + phone.length + " أرقام");
+        return;
+    }
+    if (phone.length > 11) {
+        alert("⚠️ رقم التليفون يجب أن يكون مكوناً من 11 رقماً بالضبط!\nالرقم الحالي: " + phone.length + " أرقام");
+        return;
+    }
+    if (!/^[0-9]{11}$/.test(phone)) {
+        alert("⚠️ رقم التليفون يجب أن يحتوي على أرقام فقط!");
+        return;
+    }
+
+    // Validation: Game Selection
+    if (!gameType) { 
+        alert("⚠️ يرجى اختيار نوع اللعبة!"); 
+        return; 
+    }
+    if (!selectedOpt || !selectedOpt.value) { 
+        alert("⚠️ يرجى تحديد مدة وسعر اللعبة!"); 
+        return; 
+    }
+    if (count < 1) { 
+        alert("⚠️ يرجى إدخال عدد لاعبين صحيح (1 أو أكثر)!"); 
+        return; 
+    }
 
     const durationMinutes = parseInt(selectedOpt.dataset.duration) || 30;
     const unitPrice = parseFloat(selectedOpt.dataset.price) || 0;
@@ -216,7 +265,7 @@ async function startSession() {
         shift_id: currentShiftId,
         child_name: childName,
         father_name: fatherName,
-        phone: phone || 'لا يوجد',
+        phone: phone,
         game_name: gameType,
         duration: durationMinutes,
         player_count: count,
@@ -255,7 +304,7 @@ async function startSession() {
         document.getElementById('r-shift-id').innerText = currentShiftId;
         document.getElementById('r-child-name').innerText = childName;
         document.getElementById('r-father-name').innerText = fatherName;
-        document.getElementById('r-cust-phone').innerText = phone || 'لا يوجد';
+        document.getElementById('r-cust-phone').innerText = phone;
         document.getElementById('r-game').innerText = gameType;
         document.getElementById('r-duration').innerText = `${durationMinutes} دقيقة`;
         document.getElementById('r-unit-price').innerText = `${unitPrice} جنيه`;
@@ -499,7 +548,7 @@ function backFromReports() {
 }
 
 // ============================================
-// 6. Games Manager UI
+// 6. Games Manager UI with Duplicate Prevention
 // ============================================
 function showGamesManager() {
     if (!isAdmin()) return;
@@ -518,36 +567,68 @@ async function addGamePrice() {
     const duration = parseInt(document.getElementById('new-game-duration').value);
     const price = parseFloat(document.getElementById('new-game-price').value);
 
-    if (!name || isNaN(duration) || isNaN(price)) {
-        alert("يرجى ملء جميع الحقول بصورة صحيحة!");
+    // Validation: Check if all fields are filled
+    if (!name) {
+        alert("⚠️ يرجى إدخال اسم اللعبة!");
+        return;
+    }
+    if (isNaN(duration) || duration <= 0) {
+        alert("⚠️ يرجى إدخال مدة صحيحة (أكبر من 0)!");
+        return;
+    }
+    if (isNaN(price) || price <= 0) {
+        alert("⚠️ يرجى إدخال سعر صحيح (أكبر من 0)!");
         return;
     }
 
+    // VALIDATION: Check for duplicate (same name AND same duration)
+    const existingGame = gamesData.find(g => 
+        g.name.toLowerCase() === name.toLowerCase() && 
+        g.duration === duration
+    );
+
+    if (existingGame) {
+        alert(`⚠️ لا يمكن إضافة هذه اللعبة!\n\nاللعبة "${name}" بمدة ${duration} دقيقة موجودة بالفعل.\nالسعر الحالي: ${existingGame.price} جنيه\n\nيمكنك تعديل السعر الحالي أو اختيار مدة مختلفة.`);
+        return;
+    }
+
+    // Allow adding same name with different duration (different price)
     try {
-        await fetch(`${API_BASE}/games`, {
+        const res = await fetch(`${API_BASE}/games`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name, duration, price })
         });
+
+        if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.error || 'فشل إضافة اللعبة');
+        }
+
         document.getElementById('new-game-name').value = '';
         document.getElementById('new-game-duration').value = '';
         document.getElementById('new-game-price').value = '';
         await fetchGamesData();
         loadGamesList();
         loadGamesDropdown();
-        alert("✅ تم إدراج اللعبة بنجاح!");
+        alert(`✅ تم إدراج اللعبة "${name}" (${duration} دقيقة) بنجاح!`);
     } catch (err) {
         alert("❌ خطأ: " + err.message);
     }
 }
 
 async function removeGamePrice(id) {
-    if (confirm("هل تريد إزالة هذا الخيار للعبة؟")) {
+    // Find the game to show its details before deletion
+    const gameToDelete = gamesData.find(g => g.id === id);
+    if (!gameToDelete) return;
+
+    if (confirm(`⚠️ هل أنت متأكد من إزالة هذا الخيار؟\n\nاللعبة: ${gameToDelete.name}\nالمدة: ${gameToDelete.duration} دقيقة\nالسعر: ${gameToDelete.price} جنيه`)) {
         try {
             await fetch(`${API_BASE}/games/${id}`, { method: 'DELETE' });
             await fetchGamesData();
             loadGamesList();
             loadGamesDropdown();
+            alert(`✅ تم إزالة اللعبة "${gameToDelete.name}" (${gameToDelete.duration} دقيقة) بنجاح!`);
         } catch (err) {
             alert("❌ خطأ: " + err.message);
         }
@@ -558,17 +639,36 @@ function loadGamesList() {
     const container = document.getElementById('games-list');
     if (!container) return;
     if (gamesData.length === 0) {
-        container.innerHTML = '<p style="text-align:center;">لا توجد ألعاب مضافة.</p>';
+        container.innerHTML = '<p style="text-align:center; color:#858796;">لا توجد ألعاب مضافة.</p>';
         return;
     }
-    let html = '';
+
+    // Group games by name for better display
+    const groupedGames = {};
     gamesData.forEach(g => {
-        html += `
-            <div class="list-item-row" style="display:flex; justify-content:space-between; margin-bottom:10px; padding:10px; background:#f8f9fc; border-radius:5px;">
-                <div>🎮 <strong>${g.name}</strong> | ⏳ ${g.duration} دقيقة | 💰 ${g.price} جنيه (لالفرد)</div>
-                <button style="background:#e74a3b; color:#fff;" onclick="removeGamePrice(${g.id})">إزالة ✕</button>
-            </div>`;
+        if (!groupedGames[g.name]) {
+            groupedGames[g.name] = [];
+        }
+        groupedGames[g.name].push(g);
     });
+
+    let html = '';
+    for (const [gameName, options] of Object.entries(groupedGames)) {
+        html += `<div style="margin-bottom: 15px; padding: 10px; background: #eef2f7; border-radius: 8px;">`;
+        html += `<h4 style="margin: 0 0 10px 0; color: #4e73df;">🎮 ${gameName}</h4>`;
+        options.forEach(g => {
+            html += `
+                <div class="list-item-row" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding:10px; background:#fff; border-radius:5px; border:1px solid #e3e6f0;">
+                    <div>
+                        ⏳ ${g.duration} دقيقة | 💰 ${g.price} جنيه (لالفرد)
+                        <span style="font-size:11px; color:#858796; margin-right:10px;">#${g.id}</span>
+                    </div>
+                    <button class="btn-danger" style="padding:4px 12px; font-size:12px; background:#e74a3b; color:#fff; border:none; border-radius:4px; cursor:pointer;" onclick="removeGamePrice(${g.id})">إزالة ✕</button>
+                </div>
+            `;
+        });
+        html += `</div>`;
+    }
     container.innerHTML = html;
 }
 
@@ -600,15 +700,18 @@ async function loadUsersList() {
         systemUsers.forEach((u, idx) => {
             const isCurrentUser = u.username.toLowerCase() === (currentUser ? currentUser.username.toLowerCase() : '');
             html += `
-                <div class="list-item-row" style="display:flex; justify-content:space-between; margin-bottom:10px; padding:10px; background:#f8f9fc; border-radius:5px;">
-                    <div>👤 <strong>${u.name}</strong> (@${u.username}) - <span style="color:#4e73df;">${u.role === 'admin' ? 'مدير' : 'موظف'}</span>
-                    ${isCurrentUser ? ' <span style="color:blue;font-size:12px;">(أنت)</span>' : ''}</div>
+                <div class="list-item-row" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding:10px; background:#f8f9fc; border-radius:5px; border:1px solid #e3e6f0;">
+                    <div>
+                        👤 <strong>${u.name}</strong> (@${u.username})
+                        <span style="color:#4e73df; font-size:13px;">${u.role === 'admin' ? '🔑 مدير' : '👔 موظف'}</span>
+                        ${isCurrentUser ? ' <span style="color:blue;font-size:12px;font-weight:bold;">(أنت)</span>' : ''}
+                    </div>
                     <div style="display:flex; gap:5px;">
-                        <button style="background:#f6c23e; color:#fff;" onclick="editUserInit(${idx})">✏️ تعديل</button>
+                        <button style="background:#f6c23e; color:#fff; border:none; padding:4px 12px; border-radius:4px; cursor:pointer;" onclick="editUserInit(${idx})">✏️ تعديل</button>
                     </div>
                 </div>`;
         });
-        container.innerHTML = html;
+        container.innerHTML = html || `<p style="text-align:center; color:#858796;">لا يوجد مستخدمين</p>`;
     } catch (err) {
         container.innerHTML = `<p style="color:red;">خطأ جلب المستخدمين: ${err.message}</p>`;
     }
