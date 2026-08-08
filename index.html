@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام إدارة منطقة الألعاب</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="container">
+        <!-- 1. شاشة تسجيل الدخول -->
+        <div id="login-screen" class="card-screen">
+            <h2>🔐 تسجيل دخول النظام</h2>
+            <div class="form-group">
+                <label for="username">اسم المستخدم:</label>
+                <input type="text" id="username" placeholder="أدخل اسم المستخدم">
+            </div>
+            <div class="form-group">
+                <label for="password">كلمة المرور:</label>
+                <input type="password" id="password" placeholder="أدخل كلمة المرور">
+            </div>
+            <button class="btn-block" onclick="login()">دخول ➔</button>
+        </div>
+
+        <!-- 2. الشاشة الرئيسية للحجز -->
+        <div id="dashboard-screen" class="card-screen hidden">
+            <div class="header-status">
+                <div>
+                    مرحباً: <strong id="active-user"></strong>
+                    <span class="shift-badge">الوردية الحالية: <strong id="active-shift-num">---</strong></span>
+                </div>
+                <div class="header-buttons">
+                    <button id="admin-users-btn" class="btn-admin hidden" onclick="showUsersManager()">👥 إدارة المستخدمين</button>
+                    <button id="admin-report-btn" class="btn-admin hidden" onclick="showAdminReports()">📊 التقارير</button>
+                    <button id="admin-games-btn" class="btn-admin hidden" onclick="showGamesManager()">🎮 الألعاب</button>
+                    
+                    <button class="btn-warning" style="background:#36b9cc; color:#fff;" onclick="changeMyPasswordModal()">🔑 تغيير رمزي</button>
+                    <button class="btn-warning" style="background:#f6c23e; color:#fff;" onclick="closeShift()">🔒 إقفال الوردية</button>
+                    <button class="btn-logout" onclick="logout()">خروج ✕</button>
+                </div>
+            </div>
+
+            <hr>
+
+            <h2>🎟️ حجز تذكرة جديدة</h2>
+            
+            <div class="form-group">
+                <label for="child-name">اسم الطفل <span class="required-star">*</span>:</label>
+                <input type="text" id="child-name" placeholder="اسم الطفل (مطلوب)">
+            </div>
+            <div class="form-group">
+                <label for="father-name">اسم الأب <span class="required-star">*</span>:</label>
+                <input type="text" id="father-name" placeholder="اسم الأب (مطلوب)">
+            </div>
+            <div class="form-group">
+                <label for="customer-phone">رقم التليفون <span class="required-star">*</span>:</label>
+                <input type="tel" id="customer-phone" placeholder="رقم الموبايل (مطلوب)">
+            </div>
+            
+            <div class="form-group">
+                <label for="game-type">نوع اللعبة <span class="required-star">*</span>:</label>
+                <select id="game-type" onchange="updateGamePrices()">
+                    <option value="">-- اختر اللعبة --</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="duration-price-container" style="display:none;">
+                <label for="duration-price">اختر المدة والسعر <span class="required-star">*</span>:</label>
+                <select id="duration-price">
+                    <option value="">-- اختر المدة --</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="player-count-container" style="display:none;">
+                <label for="player-count">عدد اللاعبين (المجموعة) <span class="required-star">*</span>:</label>
+                <input type="number" id="player-count" value="1" min="1">
+            </div>
+
+            <div class="form-group" id="discount-container" style="display:none;">
+                <label for="discount-amount">قيمة الخصم الكلي:</label>
+                <input type="number" id="discount-amount" value="0" min="0">
+            </div>
+
+            <button class="btn-block btn-success" onclick="startSession()">حفظ وطباعة البون 📄</button>
+        </div>
+
+        <!-- 3. شاشة عرض التذكرة (البون للطباعة) -->
+        <div id="receipt-screen" class="card-screen hidden">
+            <div class="ticket-box">
+                <div class="ticket-header">
+                    <h3>صالة الألعاب 🎮</h3>
+                    <p>بون حجز ودخول</p>
+                </div>
+                <div class="ticket-body">
+                    <p><strong>رقم الوردية:</strong> <span id="r-shift-id"></span></p>
+                    <p><strong>اسم الطفل:</strong> <span id="r-child-name"></span></p>
+                    <p><strong>اسم الأب:</strong> <span id="r-father-name"></span></p>
+                    <p><strong>التليفون:</strong> <span id="r-cust-phone"></span></p>
+                    <p><strong>اللعبة:</strong> <span id="r-game"></span></p>
+                    <p><strong>المدة:</strong> <span id="r-duration"></span></p>
+                    <p><strong>سعر الفرد:</strong> <span id="r-unit-price"></span></p>
+                    <p><strong>عدد اللاعبين:</strong> <span id="r-count"></span></p>
+                    <hr>
+                    <p><strong>وقت البدء:</strong> <span id="r-start"></span></p>
+                    <p><strong>وقت الانتهاء:</strong> <span id="r-end"></span></p>
+                    <hr>
+                    <p><strong>الإجمالي المبدئي:</strong> <span id="r-subtotal"></span></p>
+                    <p><strong>الخصم:</strong> <span id="r-discount"></span></p>
+                    <p class="total-price-line"><strong>الصافي المطلوب:</strong> <span id="r-price"></span></p>
+                    <p style="font-size: 11px; text-align: center; margin-top: 10px;">المسؤول: <span id="r-name"></span></p>
+                </div>
+            </div>
+            <div class="no-print" style="margin-top: 15px; display: flex; gap: 10px;">
+                <button class="btn-block" onclick="window.print()">🖨️ طباعة الآن</button>
+                <button class="btn-block btn-secondary" onclick="backToDashboard()">إغلاق وعودة</button>
+            </div>
+        </div>
+
+        <!-- 4. شاشة تقرير إقفال الوردية -->
+        <div id="shift-summary-screen" class="card-screen hidden">
+            <div id="shift-report-printable" class="ticket-box">
+                <div class="ticket-header">
+                    <h2>📊 تقرير إقفال الوردية</h2>
+                    <p>صالة الألعاب</p>
+                </div>
+                <div class="ticket-body">
+                    <p><strong>رقم الوردية:</strong> <span id="sr-shift-id"></span></p>
+                    <p><strong>الموظف المسؤول:</strong> <span id="sr-user-name"></span></p>
+                    <p><strong>تاريخ ووقت الإغلاق:</strong> <span id="sr-close-time"></span></p>
+                    <hr>
+                    <p><strong>إجمالي عدد الأوردرات:</strong> <strong id="sr-orders-count"></strong></p>
+                    <p><strong>إجمالي عدد اللاعبين:</strong> <strong id="sr-players-count"></strong></p>
+                    <p class="total-price-line"><strong>إجمالي النقدية المقبوضة:</strong> <strong id="sr-total-money"></strong></p>
+                    <hr>
+                    <h4>قائمة أوردرات الوردية:</h4>
+                    <table class="shift-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>الطفل</th>
+                                <th>الأب</th>
+                                <th>اللعبة</th>
+                                <th>المبلغ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sr-orders-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="no-print" style="margin-top: 15px; display: flex; gap: 10px;">
+                <button class="btn-block" onclick="window.print()">🖨️ طباعة تقرير الوردية</button>
+                <button class="btn-block btn-secondary" onclick="finishShiftClose()">إغلاق وبدء وردية جديدة ➔</button>
+            </div>
+        </div>
+
+        <!-- 5. شاشة التقارير -->
+        <div id="reports-screen" class="card-screen hidden">
+            <h2>📊 تقارير الإدارة والبحث المتقدم</h2>
+            
+            <div class="search-box-group">
+                <h3>🔍 البحث المتقدم في الحجوزات والورديات</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>رقم الوردية (مثال: SHIFT-1):</label>
+                        <input type="text" id="search-shift-id" placeholder="ادخل رقم الوردية..." oninput="filterAndSearchRecords()">
+                    </div>
+                    <div class="form-group">
+                        <label>ابحث باسم الطفل:</label>
+                        <input type="text" id="search-child-name" placeholder="ادخل اسم الطفل..." oninput="filterAndSearchRecords()">
+                    </div>
+                    <div class="form-group">
+                        <label>ابحث باسم الأب:</label>
+                        <input type="text" id="search-father-name" placeholder="ادخل اسم الأب..." oninput="filterAndSearchRecords()">
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <div>
+                    <label for="start-date">من تاريخ:</label> 
+                    <input type="date" id="start-date" onchange="updateReports()">
+                </div>
+                <div>
+                    <label for="end-date">إلى تاريخ:</label> 
+                    <input type="date" id="end-date" onchange="updateReports()">
+                </div>
+                <button class="btn-secondary" onclick="resetDateFilter()">إعادة ضبط اليوم</button>
+            </div>
+
+            <div class="report-tabs">
+                <button id="tab-active" class="btn-tab active" onclick="switchReportTab('active')">📑 الحجوزات الحالية</button>
+                <button id="tab-modified" class="btn-tab" onclick="switchReportTab('modified')">✏️ الأوردرات المعدلة</button>
+                <button id="tab-deleted" class="btn-tab" onclick="switchReportTab('deleted')">🗑️ الأوردرات المحذوفة</button>
+            </div>
+
+            <div class="stats-cards">
+                <div class="card">خزنة الإيرادات: <br><strong id="total-money">0 جنيه</strong></div>
+                <div class="card">إجمالي المشتركين: <br><strong id="total-players">0 لاعب</strong></div>
+            </div>
+
+            <div id="logs-list"></div>
+
+            <button class="btn-block btn-secondary" style="margin-top: 15px;" onclick="backFromReports()">⬅️ عودة لشاشة الحجز</button>
+        </div>
+
+        <!-- 6. شاشة إدارة الألعاب -->
+        <div id="games-manager-screen" class="card-screen hidden">
+            <h2>🎮 إدارة الألعاب والأسعار</h2>
+            <div class="form-group">
+                <label for="new-game-name">اسم اللعبة الجديدة:</label>
+                <input type="text" id="new-game-name" placeholder="مثال: ترامبولين، بلايستيشن...">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="new-game-duration">المدة (بالدقائق):</label>
+                    <input type="number" id="new-game-duration" placeholder="مثال: 30">
+                </div>
+                <div class="form-group">
+                    <label for="new-game-price">السعر للفرد (جنيه):</label>
+                    <input type="number" id="new-game-price" placeholder="مثال: 50">
+                </div>
+            </div>
+            <button class="btn-block btn-success" onclick="addGamePrice()">➕ إضافة سعر للعبة</button>
+            <hr>
+            <h3>الألعاب والأسعار الحالية</h3>
+            <div id="games-list"></div>
+            <button class="btn-block btn-secondary" style="margin-top: 15px;" onclick="backFromGamesManager()">⬅️ عودة لشاشة الحجز</button>
+        </div>
+
+        <!-- 7. شاشة إدارة المستخدمين المتقدمة -->
+        <div id="users-manager-screen" class="card-screen hidden">
+            <h2>👥 إدارة الموظفين والمستخدمين الكاملة</h2>
+            
+            <div style="background: #f8f9fc; padding: 15px; border-radius: 8px; border: 1px solid #e3e6f0; margin-bottom: 20px;">
+                <h3 id="user-form-title">➕ إضافة موظف جديد</h3>
+                <input type="hidden" id="editing-user-index" value="-1">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>اسم الموظف الحقيقي:</label>
+                        <input type="text" id="new-user-name" placeholder="مثال: أحمد محمود">
+                    </div>
+                    <div class="form-group">
+                        <label>اسم المستخدم (للدخول):</label>
+                        <input type="text" id="new-user-username" placeholder="مثال: ahmed">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group" id="password-field-group">
+                        <label>كلمة المرور:</label>
+                        <input type="text" id="new-user-password" placeholder="كلمة المرور">
+                    </div>
+                    <div class="form-group">
+                        <label>نوع الصلاحية:</label>
+                        <select id="new-user-role">
+                            <option value="staff">موظف (إضافة وإقفال وردية فقط)</option>
+                            <option value="admin">مدير (كامل الصلاحيات والتقارير)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 10px;">
+                    <button id="btn-save-user" class="btn-block btn-success" onclick="saveUser()">➕ حفظ الموظف</button>
+                    <button id="btn-cancel-user-edit" class="btn-block btn-secondary hidden" onclick="resetUserForm()">إلغاء التعديل</button>
+                </div>
+            </div>
+            
+            <hr>
+            <h3>قائمة الموظفين الحاليين</h3>
+            <div id="users-list"></div>
+            
+            <button class="btn-block btn-secondary" style="margin-top: 15px;" onclick="backFromUsersManager()">⬅️ عودة لشاشة الحجز</button>
+        </div>
+
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+
